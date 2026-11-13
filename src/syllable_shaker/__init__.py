@@ -1,10 +1,14 @@
 import os
 from flask import Flask
-from .WordGenerator import *
+from .WordGenerator import WordGenerator
 
 path = os.path.dirname(__file__)
 
-app = Flask('syllable-shaker', template_folder=os.path.join(path, 'templates'))
+app = Flask(
+    __name__,
+    template_folder=os.path.join(path, 'templates'),
+    static_folder=os.path.join(path, 'static'),
+)
 generator = WordGenerator.FromFile(os.path.join(path, 'data/syllables.csv'))
 
 from syllable_shaker import routes, errors

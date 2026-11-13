@@ -4,7 +4,7 @@
     <p class="eyebrow">A little word play</p>
     <h1 id="setup-title">Syllable Shaker</h1>
     <p class="subtitle">Set your preferences. Shake up something new.</p>
-    <form action="/" method="post">
+    <form action="{{ url_for('index') }}" method="post">
         <div class="field">
             <label class="field-label" for="config">Configuration</label>
             <input type="text" id="config" name="config" value="2:2-3:1">

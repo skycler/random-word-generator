@@ -1,32 +1,32 @@
 {% extends "layout.html" %}
 
 {% block scripts %}
-<script src="https://code.jquery.com/jquery-3.5.0.js"></script>
-<script>
-    var fade_out = function() {
-        $("#myWord").fadeOut().empty();
-    }
-    if ({{ templateFadeout }} > 0) {
-        setTimeout(fade_out, {{ templateFadeout }});
-    }
-</script>
+<script src="{{ url_for('static', filename='word.js') }}" defer></script>
 {% endblock %}
+
+{% macro state_inputs() %}
+    {% for name, value in state.as_values().items() %}
+    <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {% endfor %}
+{% endmacro %}
 
 {% block content %}
 <section class="panel word-panel" aria-label="Generated word">
     <p class="eyebrow">Your next word</p>
     <div class="word-stage">
-        <h1 id="myWord">{{ word }}</h1>
+        <h1 id="myWord" data-fadeout="{{ state.fadeout }}">{{ word }}</h1>
     </div>
     <div class="word-actions">
-        <form action="{{ url_for('same_word', code=templateCode, config=templateConfig, score=templateScore, fadeout=templateFadeout, capitalize=templateCapitalize) }}">
+        <form action="{{ url_for('same_word') }}" method="post">
+            {{ state_inputs() }}
             <button class="button-failure"><span class="action-symbol" aria-hidden="true">×</span>Try again</button>
         </form>
         <div class="score">
             <span class="score-label">Score</span>
-            <h2>{{ templateScore }}</h2>
+            <h2>{{ state.score }}</h2>
         </div>
-        <form action="{{ url_for('next_word', config=templateConfig, score=templateScore, fadeout=templateFadeout, capitalize=templateCapitalize) }}">
+        <form action="{{ url_for('next_word') }}" method="post">
+            {{ state_inputs() }}
             <button class="button-success">Next word<span aria-hidden="true"> &rarr;</span></button>
         </form>
     </div>
