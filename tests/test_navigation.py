@@ -15,6 +15,9 @@ class Page(HTMLParser):
         super().__init__()
         self.forms = []
         self.links = []
+        self.icon_links = []
+        self.buttons = []
+        self._in_button = False
         self.inputs = []
         self.options = []
         self.word = ""
@@ -26,7 +29,7 @@ class Page(HTMLParser):
         attrs = dict(attrs)
         if tag == "form":
             self.forms.append(
-                {"action": attrs["action"], "method": attrs.get("method", "get"), "data": {}}
+                {"action": attrs.get("action"), "method": attrs.get("method", "get"), "data": {}}
             )
         elif tag == "input":
             self.inputs.append(attrs)
@@ -36,6 +39,11 @@ class Page(HTMLParser):
             self.options.append(attrs)
         elif tag == "h1" and attrs.get("id") == "myWord":
             self._in_word = True
+        elif tag == "link" and attrs.get("rel") == "icon":
+            self.icon_links.append(attrs)
+        elif tag == "button":
+            self.buttons.append({**attrs, "text": ""})
+            self._in_button = True
         elif tag == "a":
             self.links.append({"href": attrs["href"], "text": "", "label": attrs.get("aria-label")})
             self._in_link = True
@@ -45,12 +53,16 @@ class Page(HTMLParser):
             self._in_word = False
         elif tag == "a":
             self._in_link = False
+        elif tag == "button":
+            self._in_button = False
 
     def handle_data(self, data):
         if self._in_word:
             self.word += data
         if self._in_link:
             self.links[-1]["text"] += data
+        if self._in_button:
+            self.buttons[-1]["text"] += data
 
 
 @pytest.fixture
@@ -150,7 +162,7 @@ def test_qr_encodes_absolute_obfuscated_stable_word_url(client, monkeypatch):
 
     monkeypatch.setattr(routes, "make_qr_code", capture_qr)
     response = client.post(
-        "/", data={"syllables": "3", "complexity": "medium", "fadeout": "0", "qr": "on"}
+        "/", data={"syllables": "3", "complexity": "medium", "fadeout": "0", "action": "qr"}
     )
     assert response.status_code == 303
     assert urlsplit(response.location).path.startswith("/qr/")
@@ -273,6 +285,92 @@ def test_setup_has_syllable_and_complexity_controls(client):
     word = Page(client.get(location).get_data(as_text=True)).word
     assert word == word.lower()
     assert state(location).fadeout == 0.0
+
+
+def test_setup_has_go_and_qr_buttons_instead_of_a_qr_checkbox(client):
+    page = Page(client.get("/").get_data(as_text=True))
+    assert not any(field.get("name") == "qr" for field in page.inputs)
+    buttons = [
+        (b.get("value"), b["text"].strip()) for b in page.buttons if b.get("name") == "action"
+    ]
+    assert buttons == [("word", "Go!"), ("qr", "Create QR code")]
+    # The first submit button is what Enter triggers, so Go! must stay first.
+    assert page.buttons[0]["value"] == "word"
+
+
+def test_setup_page_has_a_modal_qr_dialog_wired_to_a_deferred_script(client):
+    html = client.get("/").get_data(as_text=True)
+    assert 'id="setup-form"' in html
+    assert '<dialog id="qr-dialog"' in html
+    assert 'aria-labelledby="qr-title"' in html
+    assert 'id="qr-image"' in html
+    assert ">Scan to practice</h2>" in html
+    assert "Scan to play" not in html
+    assert "another device" not in html
+    # Hidden until setup.js confirms the browser can copy images.
+    assert (
+        'id="qr-copy"' in html
+        and 'id="qr-copy" class="button-success primary-action" hidden' in html
+    )
+    assert ">Copy QR code</button>" in html
+    assert 'id="qr-status"' in html and 'role="status"' in html
+    assert 'alt="QR code' in html
+    # Closing needs no JavaScript: a method=dialog form inside the dialog.
+    assert '<form method="dialog">' in html
+    assert '<script src="/static/setup.js" defer></script>' in html
+    script = client.get("/static/setup.js")
+    assert script.status_code == 200
+    body = script.get_data(as_text=True)
+    assert "showModal" in body
+    assert "ClipboardItem" in body
+
+
+@pytest.mark.parametrize("path", ["word", "/does-not-exist"])
+def test_other_screens_do_not_load_the_setup_script_or_dialog(client, path):
+    path = start(client) if path == "word" else path
+    html = client.get(path).get_data(as_text=True)
+    assert "setup.js" not in html
+    assert "<dialog" not in html
+
+
+def test_javascript_free_qr_button_still_redirects_to_the_png(client):
+    data = {"syllables": "3", "complexity": "simple", "fadeout": "0", "action": "qr"}
+    response = client.post("/", data=data)
+    assert response.status_code == 303
+    image = client.get(response.location)
+    assert image.mimetype == "image/png"
+
+
+def test_default_and_explicit_word_actions_start_a_word_session(client):
+    data = {"syllables": "3", "complexity": "simple", "fadeout": "0"}
+    for extra in ({}, {"action": "word"}):
+        response = client.post("/", data={**data, **extra})
+        assert response.status_code == 303
+        assert urlsplit(response.location).path.startswith("/word/")
+
+
+@pytest.mark.parametrize("action", ["", "QR", "invalid", "word qr"])
+def test_unknown_setup_action_returns_400(client, action):
+    data = {"syllables": "3", "complexity": "simple", "fadeout": "0", "action": action}
+    assert client.post("/", data=data).status_code == 400
+
+
+def test_old_qr_checkbox_no_longer_selects_qr(client):
+    data = {"syllables": "3", "complexity": "simple", "fadeout": "0", "qr": "on"}
+    response = client.post("/", data=data)
+    assert urlsplit(response.location).path.startswith("/word/")
+
+
+@pytest.mark.parametrize("path", ["/", "word", "/does-not-exist"])
+def test_every_html_screen_links_the_tab_icon(client, path):
+    path = start(client) if path == "word" else path
+    page = Page(client.get(path).get_data(as_text=True))
+    icons = [link for link in page.icon_links if link.get("type") == "image/svg+xml"]
+    assert len(icons) == 1
+    icon = client.get(icons[0]["href"])
+    assert icon.status_code == 200
+    assert icon.mimetype == "image/svg+xml"
+    assert b"<svg" in icon.data
 
 
 @pytest.mark.parametrize("path", ["/", "word", "/word/YR", "/does-not-exist"])

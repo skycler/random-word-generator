@@ -61,6 +61,10 @@ def index(configuration_token=None):
             raise BadRequest(str(error)) from error
         return render_template("index.html", configuration=configuration)
 
+    action = request.form.get("action", "word")
+    if action not in ("word", "qr"):
+        raise BadRequest("Unknown action.")
+
     state = read_state(
         {
             "syllables": request.form.get("syllables"),
@@ -73,7 +77,7 @@ def index(configuration_token=None):
     )
     state = transition(state)
     # The QR code identifies the same stable initial view as ordinary setup.
-    return redirect_to_word(state, qr=bool(request.form.get("qr")))
+    return redirect_to_word(state, qr=action == "qr")
 
 
 @app.get("/word/<token>")

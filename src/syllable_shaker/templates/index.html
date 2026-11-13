@@ -1,10 +1,15 @@
 {% extends "layout.html" %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='setup.js') }}" defer></script>
+{% endblock %}
+
 {% block content %}
 <section class="panel" aria-labelledby="setup-title">
     <p class="eyebrow">A little word play</p>
     <h1 id="setup-title">Syllable Shaker</h1>
     <p class="subtitle">Set your preferences. Shake up something new.</p>
-    <form action="{{ url_for('index') }}" method="post">
+    <form id="setup-form" action="{{ url_for('index') }}" method="post">
         <div class="field">
             <label class="field-label" for="syllables">Syllables</label>
             <input type="number" id="syllables" name="syllables" min="2" max="4" step="1" value="{{ configuration.syllables }}">
@@ -29,12 +34,26 @@
                 <span>Upper case</span>
                 <input type="checkbox" id="capitalize" name="capitalize"{% if configuration.capitalize == "yes" %} checked{% endif %}>
             </label>
-            <label class="option" for="qr">
-                <span>Make QR code</span>
-                <input type="checkbox" id="qr" name="qr">
-            </label>
         </div>
-        <input type="submit" id="button" class="primary-action" value="go!">
+        <div class="form-actions">
+            <button type="submit" id="button" class="primary-action" name="action" value="word">Go!</button>
+            <button type="submit" class="secondary-action" name="action" value="qr">Create QR code</button>
+        </div>
     </form>
 </section>
+
+<dialog id="qr-dialog" class="qr-dialog" aria-labelledby="qr-title">
+    <div class="qr-dialog-body">
+        <h2 id="qr-title">Scan to practice</h2>
+        <img id="qr-image" class="qr-image" alt="QR code linking to this word">
+        <p id="qr-status" class="qr-status" role="status"></p>
+        <div class="form-actions">
+            <!-- Shown by setup.js only where the browser can copy images. -->
+            <button type="button" id="qr-copy" class="button-success primary-action" hidden>Copy QR code</button>
+            <form method="dialog">
+                <button type="submit" class="secondary-action" autofocus>Close</button>
+            </form>
+        </div>
+    </div>
+</dialog>
 {% endblock %}
