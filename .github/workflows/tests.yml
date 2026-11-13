@@ -46,10 +46,24 @@ jobs:
           uv run --locked ruff format --check .
 
       - name: Run Python tests with coverage
-        run: uv run --locked pytest --cov=syllable_shaker --cov-report=term-missing --cov-report=xml -q
+        run: |
+          uv run --locked pytest -q \
+            --cov=syllable_shaker --cov-report=term-missing --cov-report=xml:.reports/coverage.xml \
+            --junitxml=.reports/python-junit.xml
 
-      - name: Run JavaScript timer tests
-        run: node --test tests/*.test.cjs
+      # Run even if the Python tests failed, so one run reports every failure.
+      - name: Run JavaScript tests
+        if: ${{ !cancelled() }}
+        run: |
+          mkdir -p .reports
+          node --test \
+            --test-reporter=spec --test-reporter-destination=stdout \
+            --test-reporter=junit --test-reporter-destination=.reports/js-junit.xml \
+            tests/*.test.cjs
+
+      - name: Publish test and coverage summary
+        if: ${{ !cancelled() }}
+        run: uv run --locked python scripts/ci_summary.py >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build distributions
         run: uv build
