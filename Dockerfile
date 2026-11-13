@@ -1,20 +1,31 @@
-FROM python:3.10-slim-buster AS build
+# syntax=docker/dockerfile:1
+FROM python:3.14-slim-trixie AS base
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-RUN mkdir /app
-WORKDIR app
-
-COPY requirements.txt .
-RUN pip3 install -r requirements.txt
-
-COPY src/$APPNAME $APPNAME
-
-CMD /bin/bash
+FROM base AS build
+COPY --from=ghcr.io/astral-sh/uv:0.13.8 /uv /usr/local/bin/uv
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never
+COPY pyproject.toml uv.lock .python-version README.md LICENSE ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev --no-install-project
+COPY src/ src/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev --no-editable
 
 FROM build AS test
-RUN pip3 install pytest
-COPY test/ test/
-CMD pytest test/*test*.py -v --junitxml="output/testresults.xml"
+COPY tests/ tests/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-editable
+CMD ["uv", "run", "--locked", "--no-sync", "pytest", "--cov=syllable_shaker", "--junitxml=output/testresults.xml", "-q"]
 
-FROM build AS runtime
-COPY src/main.py .
-CMD gunicorn -w 2 -b 0.0.0.0:$PORT "main:app"
+FROM base AS runtime
+RUN groupadd --system app && useradd --system --gid app --home-dir /app app
+COPY --from=build /app/.venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
+USER app
+EXPOSE 8000
+CMD ["sh", "-c", "exec gunicorn --workers 2 --bind \"0.0.0.0:${PORT:-8000}\" syllable_shaker:app"]

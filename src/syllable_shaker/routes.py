@@ -2,9 +2,10 @@ from flask import redirect, render_template, request, send_file, url_for
 from werkzeug.exceptions import BadRequest
 
 from syllable_shaker import app, generator
+
 from .Configuration import Configuration
-from .WordState import WordState
 from .utils import make_qr_code
+from .WordState import WordState
 
 
 def read_state(values, *, seconds=False):
@@ -51,18 +52,25 @@ def qr_response(state):
 def index(configuration_token=None):
     if request.method == "GET":
         try:
-            configuration = Configuration.from_token(configuration_token) if configuration_token else Configuration()
+            configuration = (
+                Configuration.from_token(configuration_token)
+                if configuration_token
+                else Configuration()
+            )
         except ValueError as error:
             raise BadRequest(str(error)) from error
         return render_template("index.html", configuration=configuration)
 
-    state = read_state({
-        "syllables": request.form.get("syllables"),
-        "complexity": request.form.get("complexity"),
-        "fadeout": request.form.get("fadeout"),
-        "score": "0:-1",
-        "capitalize": "yes" if request.form.get("capitalize") else "no",
-    }, seconds=True)
+    state = read_state(
+        {
+            "syllables": request.form.get("syllables"),
+            "complexity": request.form.get("complexity"),
+            "fadeout": request.form.get("fadeout"),
+            "score": "0:-1",
+            "capitalize": "yes" if request.form.get("capitalize") else "no",
+        },
+        seconds=True,
+    )
     state = transition(state)
     # The QR code identifies the same stable initial view as ordinary setup.
     return redirect_to_word(state, qr=bool(request.form.get("qr")))
@@ -73,7 +81,9 @@ def show_word(token):
     state = read_view_state(token)
     if request.args:
         return redirect_to_word(state)
-    return render_template("word.html", state=state, word=state.word(), configuration=state.configuration)
+    return render_template(
+        "word.html", state=state, word=state.word(), configuration=state.configuration
+    )
 
 
 @app.get("/qr/<token>")

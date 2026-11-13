@@ -1,14 +1,9 @@
-import os
 from flask import Flask
+
 from .WordGenerator import WordGenerator
 
-path = os.path.dirname(__file__)
-
-app = Flask(
-    __name__,
-    template_folder=os.path.join(path, 'templates'),
-    static_folder=os.path.join(path, 'static'),
-)
+app = Flask(__name__)
 generator = WordGenerator()
 
-from syllable_shaker import routes, errors
+# Register routes and error handlers only after the shared app exists.
+from . import errors, routes  # noqa: E402, F401

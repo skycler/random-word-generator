@@ -1,5 +1,5 @@
-from html.parser import HTMLParser
 import random
+from html.parser import HTMLParser
 from urllib.parse import urlsplit
 
 import pytest
@@ -25,7 +25,9 @@ class Page(HTMLParser):
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
         if tag == "form":
-            self.forms.append({"action": attrs["action"], "method": attrs.get("method", "get"), "data": {}})
+            self.forms.append(
+                {"action": attrs["action"], "method": attrs.get("method", "get"), "data": {}}
+            )
         elif tag == "input":
             self.inputs.append(attrs)
             if self.forms and attrs.get("type") == "hidden":
@@ -147,7 +149,9 @@ def test_qr_encodes_absolute_obfuscated_stable_word_url(client, monkeypatch):
         return original(address)
 
     monkeypatch.setattr(routes, "make_qr_code", capture_qr)
-    response = client.post("/", data={"syllables": "3", "complexity": "medium", "fadeout": "0", "qr": "on"})
+    response = client.post(
+        "/", data={"syllables": "3", "complexity": "medium", "fadeout": "0", "qr": "on"}
+    )
     assert response.status_code == 303
     assert urlsplit(response.location).path.startswith("/qr/")
 
@@ -170,12 +174,21 @@ def test_qr_encodes_absolute_obfuscated_stable_word_url(client, monkeypatch):
     assert word not in address
 
 
-@pytest.mark.parametrize("preferences", [
-    {"syllables": ""}, {"syllables": "1"}, {"syllables": "5"},
-    {"syllables": "2.5"}, {"syllables": "2:2-3:1"},
-    {"complexity": ""}, {"complexity": "invalid"},
-    {"fadeout": "nan"}, {"fadeout": "-1"}, {"fadeout": "11"},
-])
+@pytest.mark.parametrize(
+    "preferences",
+    [
+        {"syllables": ""},
+        {"syllables": "1"},
+        {"syllables": "5"},
+        {"syllables": "2.5"},
+        {"syllables": "2:2-3:1"},
+        {"complexity": ""},
+        {"complexity": "invalid"},
+        {"fadeout": "nan"},
+        {"fadeout": "-1"},
+        {"fadeout": "11"},
+    ],
+)
 def test_invalid_setup_returns_400(client, preferences):
     data = {"syllables": "3", "complexity": "simple", "fadeout": "0"}
     data.update(preferences)
@@ -203,7 +216,9 @@ def test_invalid_action_state_returns_400(client):
 def test_token_reconstruction_does_not_depend_on_the_generator_or_settings(client, monkeypatch):
     monkeypatch.setattr(routes, "generator", None)
     for complexity in ("simple", "medium", "complex"):
-        view = WordState.from_values({"token": encode_word("mälin"), "syllables": "4", "complexity": complexity})
+        view = WordState.from_values(
+            {"token": encode_word("mälin"), "syllables": "4", "complexity": complexity}
+        )
         page = client.get("/word/" + view.to_token())
         assert page.status_code == 200
         assert Page(page.get_data(as_text=True)).word == "mälin"
@@ -218,7 +233,9 @@ def test_token_reconstruction_does_not_depend_on_the_generator_or_settings(clien
 
 @pytest.mark.parametrize("path", ["/word/bmFsaW1v", "/qr/bmFsaW1v"])
 def test_word_only_links_are_not_supported(client, path):
-    response = client.get(path, query_string={"syllables": "4", "complexity": "medium", "score": "2:3"})
+    response = client.get(
+        path, query_string={"syllables": "4", "complexity": "medium", "score": "2:3"}
+    )
     assert response.status_code == 400
     assert "Location" not in response.headers
 
@@ -233,9 +250,14 @@ def test_query_parameters_cannot_override_an_encoded_view(client):
     assert state(response.location).fadeout == 250.0
 
 
-@pytest.mark.parametrize("path", [
-    "/next/2:2-3:1/0:-1", "/repeat/2.0/2:1/0:0", "/code/2:1/0:-1/0/no",
-])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/next/2:2-3:1/0:-1",
+        "/repeat/2.0/2:1/0:0",
+        "/code/2:1/0:-1/0/no",
+    ],
+)
 def test_retired_list_based_routes_are_not_supported(client, path):
     assert client.get(path).status_code == 404
 
@@ -267,10 +289,13 @@ def test_home_link_returns_to_setup_from_every_html_screen(client, path):
     assert Page(response.get_data(as_text=True)).word == ""
 
 
-@pytest.mark.parametrize("preferences", [
-    {"syllables": "4", "complexity": "complex", "fadeout": "1.25", "capitalize": "on"},
-    {"syllables": "2", "complexity": "medium", "fadeout": "0.75", "capitalize": ""},
-])
+@pytest.mark.parametrize(
+    "preferences",
+    [
+        {"syllables": "4", "complexity": "complex", "fadeout": "1.25", "capitalize": "on"},
+        {"syllables": "2", "complexity": "medium", "fadeout": "0.75", "capitalize": ""},
+    ],
+)
 def test_home_prefills_current_preferences_but_starts_a_fresh_session(client, preferences):
     location = start(client, **preferences)
     page = Page(client.get(location).get_data(as_text=True))
@@ -295,10 +320,15 @@ def test_home_prefills_current_preferences_but_starts_a_fresh_session(client, pr
     # Clicking Home again while on setup must retain the same configuration.
     setup_home = next(link for link in form.links if link["label"] == "Syllable Shaker home")
     assert setup_home["href"] == home["href"]
-    restarted = client.post(form.forms[0]["action"], data={
-        "syllables": fields["syllables"]["value"], "complexity": selected["value"],
-        "fadeout": fields["fadeout"]["value"], "capitalize": preferences["capitalize"],
-    })
+    restarted = client.post(
+        form.forms[0]["action"],
+        data={
+            "syllables": fields["syllables"]["value"],
+            "complexity": selected["value"],
+            "fadeout": fields["fadeout"]["value"],
+            "capitalize": preferences["capitalize"],
+        },
+    )
     assert restarted.status_code == 303
     assert score(restarted.location) == "0:0"
     assert state(restarted.location).configuration == state(location).configuration
@@ -311,8 +341,8 @@ def test_static_assets_and_external_dom_ready_timer(client):
     assert css.mimetype == "text/css"
     html = client.get(start(client)).get_data(as_text=True)
     assert 'data-fadeout="250.0"' in html
-    assert '/static/word.js' in html
-    assert 'defer' in html
-    assert 'jquery' not in html.lower()
-    assert '<style>' not in html
-    assert '<script>' not in html
+    assert "/static/word.js" in html
+    assert "defer" in html
+    assert "jquery" not in html.lower()
+    assert "<style>" not in html
+    assert "<script>" not in html

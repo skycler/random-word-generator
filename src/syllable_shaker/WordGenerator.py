@@ -1,7 +1,7 @@
 """Weighted syllable construction for German-readable invented words."""
 
-from dataclasses import dataclass
 import random
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
@@ -38,11 +38,25 @@ class GeneratedWord:
 
 class WordGenerator:
     # Spellings with straightforward German readings; deliberately no c/v/q/x/y.
-    _onsets = (("b", 2), ("d", 2), ("f", 2), ("g", 1), ("k", 3), ("l", 5),
-               ("m", 5), ("n", 5), ("p", 2), ("r", 3), ("s", 2), ("t", 4))
+    _onsets = (
+        ("b", 2),
+        ("d", 2),
+        ("f", 2),
+        ("g", 1),
+        ("k", 3),
+        ("l", 5),
+        ("m", 5),
+        ("n", 5),
+        ("p", 2),
+        ("r", 3),
+        ("s", 2),
+        ("t", 4),
+    )
     _vowels = (("a", 5), ("e", 3), ("i", 4), ("o", 4), ("u", 3))
-    _clusters = tuple((part, 1) for part in
-                      ("bl", "br", "dr", "fl", "fr", "gl", "gr", "kl", "kr", "pl", "pr", "tr", "sch"))
+    _clusters = tuple(
+        (part, 1)
+        for part in ("bl", "br", "dr", "fl", "fr", "gl", "gr", "kl", "kr", "pl", "pr", "tr", "sch")
+    )
     _diphthongs = (("ei", 1), ("au", 1))
     _internal_codas = (("", 16), ("n", 2), ("m", 1), ("l", 1), ("r", 1))
     _final_codas = (("", 5), ("n", 3), ("m", 1), ("l", 2), ("r", 2))
@@ -76,7 +90,11 @@ class WordGenerator:
             else:
                 # Vowel-initial syllables are only allowed at the start of a word.
                 starts = onsets + ((("", 3),) if position == 0 else ())
-                codas = self._final_codas if position == settings.syllables - 1 else self._internal_codas
+                codas = (
+                    self._final_codas
+                    if position == settings.syllables - 1
+                    else self._internal_codas
+                )
                 if settings.complexity == "complex" and position == settings.syllables - 1:
                     codas += self._complex_codas
 
@@ -84,7 +102,11 @@ class WordGenerator:
                 onset = self._choose(starts)
                 candidate = onset + self._choose(vowels) + self._choose(codas)
                 previous = parts[-1] if parts else ""
-                if previous and previous[-1] not in "aeiou" and onset not in self._joins[previous[-1]]:
+                if (
+                    previous
+                    and previous[-1] not in "aeiou"
+                    and onset not in self._joins[previous[-1]]
+                ):
                     continue
                 if candidate == previous:
                     continue

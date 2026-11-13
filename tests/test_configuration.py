@@ -24,10 +24,17 @@ def test_configuration_token_uses_a_compact_array():
 
 
 def test_configuration_round_trip_preserves_preferences_without_word_or_score():
-    view = WordState.from_values({
-        "token": encode_word("nalimo"), "syllables": "4", "complexity": "complex",
-        "fadeout": "1.25", "capitalize": "yes", "score": "9:8",
-    }, seconds=True)
+    view = WordState.from_values(
+        {
+            "token": encode_word("nalimo"),
+            "syllables": "4",
+            "complexity": "complex",
+            "fadeout": "1.25",
+            "capitalize": "yes",
+            "score": "9:8",
+        },
+        seconds=True,
+    )
     configuration = view.configuration
     token = configuration.to_token()
     assert Configuration.from_token(token) == configuration
@@ -46,18 +53,36 @@ def test_setup_token_does_not_generate_a_word(monkeypatch):
     assert 'value="complex" selected' in html
 
 
-@pytest.mark.parametrize("token", [None, "", "c1.e30", "c2.", "c2.e30", "c3.e30", "c2._w", "c2.YR", "c2." + "a" * 513])
+@pytest.mark.parametrize(
+    "token", [None, "", "c1.e30", "c2.", "c2.e30", "c3.e30", "c2._w", "c2.YR", "c2." + "a" * 513]
+)
 def test_malformed_and_old_configuration_tokens_are_rejected(token):
     with pytest.raises(ValueError, match="Invalid configuration token"):
         Configuration.from_token(token)
 
 
-@pytest.mark.parametrize("position,value", [
-    (0, 1), (0, 5), (0, True), (0, "3"),
-    (1, 3), (1, -1), (1, True), (1, "simple"),
-    (2, -1), (2, 10001), (2, float("nan")), (2, True), (2, 0.0),
-    (3, True), (3, 2), (3, -1), (3, "yes"),
-])
+@pytest.mark.parametrize(
+    "position,value",
+    [
+        (0, 1),
+        (0, 5),
+        (0, True),
+        (0, "3"),
+        (1, 3),
+        (1, -1),
+        (1, True),
+        (1, "simple"),
+        (2, -1),
+        (2, 10001),
+        (2, float("nan")),
+        (2, True),
+        (2, 0.0),
+        (3, True),
+        (3, 2),
+        (3, -1),
+        (3, "yes"),
+    ],
+)
 def test_invalid_configuration_tokens_return_400(position, value):
     payload = [3, 0, 0, 0]
     payload[position] = value

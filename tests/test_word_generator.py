@@ -13,7 +13,9 @@ def test_simple_words_have_the_requested_number_of_open_syllables(count):
         result = generator.generate(syllables=count, complexity="simple")
         assert len(result.syllables) == count
         assert result.text == "".join(result.syllables)
-        assert all(re.fullmatch(r"[bdfgklmnprst][aeiou]", syllable) for syllable in result.syllables)
+        assert all(
+            re.fullmatch(r"[bdfgklmnprst][aeiou]", syllable) for syllable in result.syllables
+        )
 
 
 @pytest.mark.parametrize("complexity", ["simple", "medium", "complex"])
@@ -29,14 +31,19 @@ def test_words_respect_syllable_boundaries_and_readable_sound_patterns(complexit
         assert "ng" not in result.text  # Avoid merging n + g into a different sound.
         for previous, current in zip(result.syllables, result.syllables[1:]):
             assert not (previous[-1] in "aeiou" and current[0] in "aeiou")
-        assert all(re.fullmatch(r"(?:sch|[bdfgklmnprst]{1,2})?(?:ei|au|[aeiou])[nmlrstkf]?", syllable)
-                   for syllable in result.syllables)
+        assert all(
+            re.fullmatch(r"(?:sch|[bdfgklmnprst]{1,2})?(?:ei|au|[aeiou])[nmlrstkf]?", syllable)
+            for syllable in result.syllables
+        )
 
     if complexity != "simple":
         assert any(syllable[-1] not in "aeiou" for word in words for syllable in word.syllables)
     if complexity == "complex":
-        assert any(re.match(r"sch|[bdfgklmnprst]{2}", syllable)
-                   for word in words for syllable in word.syllables)
+        assert any(
+            re.match(r"sch|[bdfgklmnprst]{2}", syllable)
+            for word in words
+            for syllable in word.syllables
+        )
         assert any("ei" in word.text or "au" in word.text for word in words)
     else:
         assert not any("ei" in word.text or "au" in word.text for word in words)
@@ -57,7 +64,9 @@ def test_unknown_complexity_is_rejected(complexity):
 def test_generation_is_repeatable_with_an_injected_random_source():
     first = WordGenerator(rng=random.Random(7))
     second = WordGenerator(rng=random.Random(7))
-    assert [first.generate(3, "complex") for _ in range(50)] == [second.generate(3, "complex") for _ in range(50)]
+    assert [first.generate(3, "complex") for _ in range(50)] == [
+        second.generate(3, "complex") for _ in range(50)
+    ]
 
 
 def test_default_generation_does_not_reseed_or_consume_global_random_state():

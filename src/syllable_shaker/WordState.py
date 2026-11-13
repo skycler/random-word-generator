@@ -37,7 +37,15 @@ class WordState:
         """[word, syllables, complexity code, failures, successes, ms, uppercase]."""
         count, complexity, fadeout, capitalize = self.configuration.to_array()
         scores = ScoreManager(self.score)
-        payload = [decode_word(self.token), count, complexity, scores.Fails, scores.Success, fadeout, capitalize]
+        payload = [
+            decode_word(self.token),
+            count,
+            complexity,
+            scores.Fails,
+            scores.Success,
+            fadeout,
+            capitalize,
+        ]
         return encode_payload("v2", payload)
 
     @classmethod
@@ -50,9 +58,13 @@ class WordState:
             if type(failures) is not int or type(successes) is not int:
                 raise ValueError("Invalid score values.")
             configuration = Configuration.from_array([syllables, complexity, fadeout, capitalize])
-            state = cls.from_values({
-                **asdict(configuration), "token": encode_word(word), "score": f"{failures}:{successes}",
-            })
+            state = cls.from_values(
+                {
+                    **asdict(configuration),
+                    "token": encode_word(word),
+                    "score": f"{failures}:{successes}",
+                }
+            )
             if state.to_token() != token:
                 raise ValueError("Noncanonical view token.")
         except (ValueError, TypeError) as error:

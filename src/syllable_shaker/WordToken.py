@@ -4,7 +4,6 @@ import base64
 import binascii
 import re
 
-
 _WORD = re.compile(r"[a-zäöüß]{1,32}")
 _TOKEN = re.compile(r"[A-Za-z0-9_-]{2,86}")
 

@@ -39,27 +39,69 @@ The old character-length configuration, list-index word codes, and legacy `/next
 
 Visibility durations are validated as finite values between 0 and 10 seconds. Setup uses seconds; encoded view state stores milliseconds.
 
-## Local development
+## Toolchain and local development
+
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) **0.13.8 or newer** and Node.js 24 (only needed for JavaScript tests). Upgrade an existing standalone uv installation with `uv self update`. Python 3.14 is selected by the tracked `.python-version`; uv can install it automatically.
+
+`pyproject.toml` is the source of truth for package metadata, dependencies, development tools, pytest, coverage, and Ruff. Commit `uv.lock` when dependencies change; local development, CI, and Docker use the same locked versions from PyPI.
 
 ```sh
-python -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python -m flask --app src/main.py run --port 8008
+uv sync --locked
+uv run --locked flask --app syllable_shaker run --debug --port 8008
 ```
 
-Open http://localhost:8008. Port 8008 avoids the macOS AirPlay conflict on port 5000.
+Open http://localhost:8008. Port 8008 avoids the macOS AirPlay conflict on port 5000. The package is installed in editable mode for development; no `PYTHONPATH` setup is needed.
 
-## Tests
+To add or update dependencies:
 
 ```sh
-PYTHONPATH=src .venv/bin/python -m pytest test -q
-node --test test/word-timer-tests.cjs
+uv add <package>
+uv add --dev <tool>
+uv lock --upgrade
+uv sync --locked
 ```
 
-The timer tests use Node's built-in test runner (Node 18+) and require no npm dependencies. Node is only needed for those tests, not to run the app.
+## Checks and tests
+
+Tests live in `tests/test_*.py` and use pytest's standard discovery. JavaScript timer tests use Node's built-in runner with no npm dependencies.
+
+```sh
+uv run --locked ruff check .
+uv run --locked ruff format --check .
+uv run --locked pytest -q
+node --test tests/*.test.cjs
+```
+
+Apply formatting with `uv run --locked ruff format .`. For branch coverage:
+
+```sh
+uv run --locked pytest --cov=syllable_shaker --cov-report=term-missing
+```
+
+Coverage runs require at least 90% coverage, configured in `pyproject.toml`.
+
+## Packaging and Docker
+
+```sh
+uv build
+```
+
+The uv build backend creates a source distribution and wheel in `dist/`, including the package's HTML templates, CSS, and JavaScript. Package metadata starts at version `0.1.0` in `pyproject.toml`.
+
+The multi-stage Dockerfile uses Python 3.14 on Debian Trixie and pinned uv. Production installs only runtime dependencies and the non-editable package, runs as a non-root user, and starts `syllable_shaker:app` with Gunicorn. `PORT` defaults to 8000 and honors Railway's supplied value.
+
+```sh
+docker compose up --build app                     # http://localhost:8008
+docker compose --profile dev up --build debug     # hot reload at http://localhost:8009
+docker compose --profile test run --build --rm tests
+```
+
+The Docker test target runs Python tests; run JavaScript tests separately with Node or in CI. Python test reports are written to `.reports/` when using Compose. `.dockerignore` excludes Git metadata, local environments, secrets, caches, and build artifacts.
 
 ## CI and deployment
 
-`.github/workflows/tests.yml` runs both test suites on pushes and pull requests targeting `main`, using Python 3.10 and Node.js 22. It can also be run manually from GitHub Actions.
+`.github/workflows/tests.yml` runs on pushes and pull requests targeting `main`, and can also be run manually. CI uses uv's locked dependencies, Python 3.14, and Node.js 24. It checks Ruff lint/formatting, runs Python tests with coverage and JavaScript timer tests, builds distributions, and builds/smoke-tests the non-root production image and its packaged assets.
+
+GitHub Actions are pinned to commit SHAs. Dependabot checks uv dependencies, Actions, and Docker images weekly.
 
 Railway's production source is configured to **Wait for CI** before deploying `main`. Keep that setting enabled so failed checks prevent deployment. The workflow itself does not deploy or need Railway credentials.

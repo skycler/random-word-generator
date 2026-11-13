@@ -1,0 +1,28 @@
+services:
+  app:
+    build:
+      context: .
+      target: runtime
+    environment:
+      PORT: "8000"
+    ports:
+      - "127.0.0.1:8008:8000"
+
+  debug:
+    build:
+      context: .
+      target: build
+    profiles: [dev]
+    command: uv run --locked flask --app syllable_shaker run --host 0.0.0.0 --port 8000 --debug
+    ports:
+      - "127.0.0.1:8009:8000"
+    volumes:
+      - ./src:/app/src
+
+  tests:
+    build:
+      context: .
+      target: test
+    profiles: [test]
+    volumes:
+      - ./.reports:/app/output

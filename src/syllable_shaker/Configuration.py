@@ -6,7 +6,6 @@ from math import isfinite
 from .URLToken import decode_payload, encode_payload
 from .WordGenerator import GenerationSettings
 
-
 # Fixed protocol codes: 0 = simple, 1 = medium, 2 = complex.
 _COMPLEXITIES = ("simple", "medium", "complex")
 
@@ -36,22 +35,35 @@ class Configuration:
     def to_array(self):
         """[syllables, complexity code, milliseconds, uppercase flag]."""
         milliseconds = int(self.fadeout) if float(self.fadeout).is_integer() else self.fadeout
-        return [self.syllables, _COMPLEXITIES.index(self.complexity), milliseconds, int(self.capitalize == "yes")]
+        return [
+            self.syllables,
+            _COMPLEXITIES.index(self.complexity),
+            milliseconds,
+            int(self.capitalize == "yes"),
+        ]
 
     @classmethod
     def from_array(cls, payload):
         if not isinstance(payload, list) or len(payload) != 4:
             raise ValueError("Invalid configuration array.")
         syllables, complexity, fadeout, capitalize = payload
-        if (type(syllables) is not int or type(complexity) is not int
-                or not 0 <= complexity < len(_COMPLEXITIES)
-                or type(fadeout) not in (int, float)
-                or type(capitalize) is not int or capitalize not in (0, 1)):
+        if (
+            type(syllables) is not int
+            or type(complexity) is not int
+            or not 0 <= complexity < len(_COMPLEXITIES)
+            or type(fadeout) not in (int, float)
+            or type(capitalize) is not int
+            or capitalize not in (0, 1)
+        ):
             raise ValueError("Invalid configuration array.")
-        return cls.from_values({
-            "syllables": syllables, "complexity": _COMPLEXITIES[complexity],
-            "fadeout": fadeout, "capitalize": "yes" if capitalize else "no",
-        })
+        return cls.from_values(
+            {
+                "syllables": syllables,
+                "complexity": _COMPLEXITIES[complexity],
+                "fadeout": fadeout,
+                "capitalize": "yes" if capitalize else "no",
+            }
+        )
 
     def to_token(self):
         return encode_payload("c2", self.to_array())
