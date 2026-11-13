@@ -1,67 +1,76 @@
-"""URL-carried word state and the transitions that produce the next view."""
+"""URL-carried state for stable word views and explicit scoring transitions."""
 
 from dataclasses import asdict, dataclass, replace
-from math import isfinite
 
+from .Configuration import Configuration
 from .ScoreManager import ScoreManager
-from .WordGenerator import DecodeConfig
+from .URLToken import decode_payload, encode_payload
+from .WordToken import decode_word, encode_word
 
 
 @dataclass(frozen=True)
 class WordState:
-    config: str
+    syllables: int
+    complexity: str
     score: str
     fadeout: float  # Milliseconds; only the setup form uses seconds.
     capitalize: str
-    code: str | None = None
+    token: str | None = None
 
     @classmethod
     def from_values(cls, values, *, seconds=False):
-        config = values.get("config")
-        try:
-            DecodeConfig(config)
-        except (AttributeError, TypeError, ValueError) as error:
-            raise ValueError("Invalid configuration.") from error
-
+        configuration = Configuration.from_values(values, seconds=seconds)
         try:
             score = ScoreManager(values.get("score", "0:0")).GetScore()
+            if len(score) > 64:
+                raise ValueError("Score is too long.")
         except Exception as error:
             raise ValueError("Invalid score.") from error
 
+        return cls(**asdict(configuration), score=score, token=values.get("token"))
+
+    @property
+    def configuration(self):
+        return Configuration(self.syllables, self.complexity, self.fadeout, self.capitalize)
+
+    def to_token(self):
+        """[word, syllables, complexity code, failures, successes, ms, uppercase]."""
+        count, complexity, fadeout, capitalize = self.configuration.to_array()
+        scores = ScoreManager(self.score)
+        payload = [decode_word(self.token), count, complexity, scores.Fails, scores.Success, fadeout, capitalize]
+        return encode_payload("v2", payload)
+
+    @classmethod
+    def from_token(cls, token):
         try:
-            fadeout = float(values.get("fadeout", 0)) * (1000 if seconds else 1)
-        except (TypeError, ValueError) as error:
-            raise ValueError("Invalid visibility duration; use 0 to 10 seconds.") from error
-        if not isfinite(fadeout) or not 0 <= fadeout <= 10000:
-            raise ValueError("Invalid visibility duration; use 0 to 10 seconds.")
-
-        capitalize = values.get("capitalize", "no")
-        if capitalize not in ("yes", "no"):
-            raise ValueError("Invalid upper-case preference.")
-
-        return cls(config, score, fadeout, capitalize, values.get("code"))
-
-    def as_values(self):
-        """One representation for both URL parameters and hidden form inputs."""
-        return asdict(self)
+            payload = decode_payload("v2", token)
+            if len(payload) != 7:
+                raise ValueError("Invalid view array.")
+            word, syllables, complexity, failures, successes, fadeout, capitalize = payload
+            if type(failures) is not int or type(successes) is not int:
+                raise ValueError("Invalid score values.")
+            configuration = Configuration.from_array([syllables, complexity, fadeout, capitalize])
+            state = cls.from_values({
+                **asdict(configuration), "token": encode_word(word), "score": f"{failures}:{successes}",
+            })
+            if state.to_token() != token:
+                raise ValueError("Noncanonical view token.")
+        except (ValueError, TypeError) as error:
+            raise ValueError("Invalid view token.") from error
+        return state
 
     def advance(self, generator):
-        try:
-            _, code = generator.MakeWord(self.config, self.capitalize)
-        except Exception as error:
-            raise ValueError("Unable to generate a word from this configuration.") from error
+        result = generator.generate(self.syllables, self.complexity)
         scores = ScoreManager(self.score)
         scores.Succeeded()
-        return replace(self, code=code, score=scores.GetScore())
+        return replace(self, token=encode_word(result.text), score=scores.GetScore())
 
-    def retry(self, generator):
-        self.word(generator)  # Reject missing or invalid codes before transitioning.
+    def retry(self):
+        self.word()  # Reject missing or invalid tokens before transitioning.
         scores = ScoreManager(self.score)
         scores.Failed()
         return replace(self, score=scores.GetScore())
 
-    def word(self, generator):
-        try:
-            return generator.MakeWordFromCode(self.code, self.capitalize)
-        except Exception as error:
-            raise ValueError("Invalid word code.") from error
+    def word(self):
+        word = decode_word(self.token)
+        return word.upper() if self.capitalize == "yes" else word

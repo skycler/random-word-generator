@@ -6,20 +6,28 @@
     <p class="subtitle">Set your preferences. Shake up something new.</p>
     <form action="{{ url_for('index') }}" method="post">
         <div class="field">
-            <label class="field-label" for="config">Configuration</label>
-            <input type="text" id="config" name="config" value="2:2-3:1">
+            <label class="field-label" for="syllables">Syllables</label>
+            <input type="number" id="syllables" name="syllables" min="2" max="4" step="1" value="{{ configuration.syllables }}">
+        </div>
+        <div class="field">
+            <label class="field-label" for="complexity">Complexity</label>
+            <select id="complexity" name="complexity">
+                <option value="simple"{% if configuration.complexity == "simple" %} selected{% endif %}>Simple · open syllables</option>
+                <option value="medium"{% if configuration.complexity == "medium" %} selected{% endif %}>Medium · add endings</option>
+                <option value="complex"{% if configuration.complexity == "complex" %} selected{% endif %}>Complex · clusters &amp; diphthongs</option>
+            </select>
         </div>
         <div class="field">
             <label class="field-label" for="fadeout">Visible for</label>
             <div class="input-with-unit">
-                <input type="number" id="fadeout" name="fadeout" min="0" max="10" step="0.25" value="0">
+                <input type="number" id="fadeout" name="fadeout" min="0" max="10" step="0.25" value="{{ '%g'|format(configuration.fadeout / 1000) }}">
                 <span class="input-unit">seconds</span>
             </div>
         </div>
         <div class="options">
             <label class="option" for="capitalize">
                 <span>Upper case</span>
-                <input type="checkbox" id="capitalize" name="capitalize">
+                <input type="checkbox" id="capitalize" name="capitalize"{% if configuration.capitalize == "yes" %} checked{% endif %}>
             </label>
             <label class="option" for="qr">
                 <span>Make QR code</span>

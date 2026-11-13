@@ -2,6 +2,7 @@ from flask import redirect, render_template, request, send_file, url_for
 from werkzeug.exceptions import BadRequest
 
 from syllable_shaker import app, generator
+from .Configuration import Configuration
 from .WordState import WordState
 from .utils import make_qr_code
 
@@ -13,38 +14,51 @@ def read_state(values, *, seconds=False):
         raise BadRequest(str(error)) from error
 
 
+def read_view_state(token):
+    try:
+        return WordState.from_token(token)
+    except ValueError as error:
+        raise BadRequest(str(error)) from error
+
+
 def transition(state, *, retry=False):
     try:
-        return state.retry(generator) if retry else state.advance(generator)
+        return state.retry() if retry else state.advance(generator)
     except ValueError as error:
         raise BadRequest(str(error)) from error
 
 
 def word_url(state, *, external=False):
-    return url_for("show_word", **state.as_values(), _external=external)
+    return url_for("show_word", token=state.to_token(), _external=external)
 
 
 def redirect_to_word(state, *, qr=False):
-    location = url_for("show_qr", **state.as_values()) if qr else word_url(state)
+    location = url_for("show_qr", token=state.to_token()) if qr else word_url(state)
     return redirect(location, code=303)
 
 
 def qr_response(state):
     try:
-        state.word(generator)
+        state.word()
     except ValueError as error:
         raise BadRequest(str(error)) from error
     return send_file(make_qr_code(word_url(state, external=True)), mimetype="image/png")
 
 
+@app.get("/setup/<configuration_token>")
 @app.route("/", methods=["POST", "GET"])
 @app.route("/index", methods=["POST", "GET"])
-def index():
+def index(configuration_token=None):
     if request.method == "GET":
-        return render_template("index.html")
+        try:
+            configuration = Configuration.from_token(configuration_token) if configuration_token else Configuration()
+        except ValueError as error:
+            raise BadRequest(str(error)) from error
+        return render_template("index.html", configuration=configuration)
 
     state = read_state({
-        "config": request.form.get("config"),
+        "syllables": request.form.get("syllables"),
+        "complexity": request.form.get("complexity"),
         "fadeout": request.form.get("fadeout"),
         "score": "0:-1",
         "capitalize": "yes" if request.form.get("capitalize") else "no",
@@ -54,50 +68,27 @@ def index():
     return redirect_to_word(state, qr=bool(request.form.get("qr")))
 
 
-@app.get("/word/<code>")
-def show_word(code):
-    state = read_state({**request.args, "code": code})
-    try:
-        word = state.word(generator)
-    except ValueError as error:
-        raise BadRequest(str(error)) from error
-    return render_template("word.html", state=state, word=word)
+@app.get("/word/<token>")
+def show_word(token):
+    state = read_view_state(token)
+    if request.args:
+        return redirect_to_word(state)
+    return render_template("word.html", state=state, word=state.word(), configuration=state.configuration)
 
 
-@app.get("/qr/<code>")
-def show_qr(code):
-    return qr_response(read_state({**request.args, "code": code}))
+@app.get("/qr/<token>")
+def show_qr(token):
+    state = read_view_state(token)
+    if request.args:
+        return redirect_to_word(state, qr=True)
+    return qr_response(state)
 
 
 @app.post("/next")
 def next_word():
-    return redirect_to_word(transition(read_state(request.form)))
+    return redirect_to_word(transition(read_view_state(request.form.get("state"))))
 
 
 @app.post("/repeat")
 def same_word():
-    return redirect_to_word(transition(read_state(request.form), retry=True))
-
-
-# Compatibility adapters for existing bookmarks and printed QR codes. New UI
-# actions only use POST; old action URLs redirect to a stable view on arrival.
-@app.get("/next/<config>/<score>")
-@app.get("/next/<config>/<score>/<fadeout>")
-@app.get("/next/<config>/<score>/<fadeout>/<capitalize>")
-def legacy_next_word(config, score, fadeout=0.0, capitalize="no"):
-    state = read_state({"config": config, "score": score, "fadeout": fadeout, "capitalize": capitalize})
-    return redirect_to_word(transition(state))
-
-
-@app.get("/repeat/<code>/<config>/<score>")
-@app.get("/repeat/<code>/<config>/<score>/<fadeout>")
-@app.get("/repeat/<code>/<config>/<score>/<fadeout>/<capitalize>")
-def legacy_same_word(code, config, score, fadeout=0.0, capitalize="no"):
-    state = read_state({"code": code, "config": config, "score": score, "fadeout": fadeout, "capitalize": capitalize})
-    return redirect_to_word(transition(state, retry=True))
-
-
-@app.get("/code/<config>/<score>/<fadeout>/<capitalize>")
-def make_code(config, score, fadeout, capitalize):
-    state = read_state({"config": config, "score": score, "fadeout": fadeout, "capitalize": capitalize})
-    return qr_response(transition(state))
+    return redirect_to_word(transition(read_view_state(request.form.get("state")), retry=True))

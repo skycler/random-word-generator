@@ -9,6 +9,6 @@ app = Flask(
     template_folder=os.path.join(path, 'templates'),
     static_folder=os.path.join(path, 'static'),
 )
-generator = WordGenerator.FromFile(os.path.join(path, 'data/syllables.csv'))
+generator = WordGenerator()
 
 from syllable_shaker import routes, errors

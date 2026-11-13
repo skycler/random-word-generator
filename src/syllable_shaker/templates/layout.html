@@ -14,8 +14,10 @@
 <body>
     <div id="container">
         <header class="site-header">
-            <span class="brand-mark" aria-hidden="true">s.</span>
-            <span>Syllable Shaker</span>
+            <a class="brand-link" href="{{ url_for('index', configuration_token=configuration.to_token()) if configuration is defined else url_for('index') }}" aria-label="Syllable Shaker home">
+                <span class="brand-mark" aria-hidden="true">s.</span>
+                <span>Syllable Shaker</span>
+            </a>
         </header>
         <main>{% block content %}{% endblock %}</main>
         <footer id="footer">

@@ -5,9 +5,7 @@
 {% endblock %}
 
 {% macro state_inputs() %}
-    {% for name, value in state.as_values().items() %}
-    <input type="hidden" name="{{ name }}" value="{{ value }}">
-    {% endfor %}
+    <input type="hidden" name="state" value="{{ state.to_token() }}">
 {% endmacro %}
 
 {% block content %}
