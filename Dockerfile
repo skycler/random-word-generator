@@ -10,16 +10,13 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never
 COPY pyproject.toml uv.lock .python-version README.md LICENSE ./
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --no-install-project
+RUN uv sync --locked --no-dev --no-install-project
 COPY src/ src/
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --no-editable
+RUN uv sync --locked --no-dev --no-editable
 
 FROM build AS test
 COPY tests/ tests/
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-editable
+RUN uv sync --locked --no-editable
 CMD ["uv", "run", "--locked", "--no-sync", "pytest", "--cov=syllable_shaker", "--junitxml=output/testresults.xml", "-q"]
 
 FROM base AS runtime
