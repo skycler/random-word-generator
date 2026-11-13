@@ -1,4 +1,4 @@
-![master](https://github.com/basegpu/random-word-generator/actions/workflows/main.yml/badge.svg)
+[![Tests](https://github.com/skycler/random-word-generator/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/skycler/random-word-generator/actions/workflows/tests.yml)
 
 # random-word-generator
 Based on a list of syllables, randomly generated words are displayed. Implemented as flask webapp.
@@ -34,3 +34,9 @@ node --test test/word-timer-tests.cjs
 ```
 
 The timer tests use Node's built-in test runner (Node 18+) and require no npm dependencies. Node is only needed for those tests, not to run the app.
+
+## CI and deployment
+
+`.github/workflows/tests.yml` runs both test suites on pushes and pull requests targeting `main`, using Python 3.10 and Node.js 22. It can also be run manually from GitHub Actions.
+
+Railway's production source is configured to **Wait for CI** before deploying `main`. Keep that setting enabled so failed checks prevent deployment. The workflow itself does not deploy or need Railway credentials.
