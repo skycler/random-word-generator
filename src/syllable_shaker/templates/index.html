@@ -1,15 +1,32 @@
 {% extends "layout.html" %}
 {% block content %}
-<h1>Syllable Shaker</h1>
-<br>
-<form action = "/" method = "post">
-    <table class="center">
-        <tr><td>config</td><td><input type = "text" name = "config" value = "2:2-3:1" /></td></tr>
-        <tr><td>visible for</td><td><input type = "number" name = "fadeout" min = "0" max = "10" step = "0.25" value = "0"/></td></tr>
-        <tr><td>upper case</td><td><input type = "checkbox" name = "capitalize" /></td></tr>
-        <tr><td>make QR code</td><td><input type = "checkbox" name = "qr" /></td></tr>
-    </table>
-    <br>
-    <input type = "submit" id = "button" value = "go!"/>
-</form>
+<section class="panel" aria-labelledby="setup-title">
+    <p class="eyebrow">A little word play</p>
+    <h1 id="setup-title">Syllable Shaker</h1>
+    <p class="subtitle">Set your preferences. Shake up something new.</p>
+    <form action="/" method="post">
+        <div class="field">
+            <label class="field-label" for="config">Configuration</label>
+            <input type="text" id="config" name="config" value="2:2-3:1">
+        </div>
+        <div class="field">
+            <label class="field-label" for="fadeout">Visible for</label>
+            <div class="input-with-unit">
+                <input type="number" id="fadeout" name="fadeout" min="0" max="10" step="0.25" value="0">
+                <span class="input-unit">seconds</span>
+            </div>
+        </div>
+        <div class="options">
+            <label class="option" for="capitalize">
+                <span>Upper case</span>
+                <input type="checkbox" id="capitalize" name="capitalize">
+            </label>
+            <label class="option" for="qr">
+                <span>Make QR code</span>
+                <input type="checkbox" id="qr" name="qr">
+            </label>
+        </div>
+        <input type="submit" id="button" class="primary-action" value="go!">
+    </form>
+</section>
 {% endblock %}

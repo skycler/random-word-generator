@@ -1,9 +1,13 @@
 {% extends "layout.html" %}
 
+{% block title %}Something went wrong · Syllable Shaker{% endblock %}
+
 {% block content %}
-<form action="{{ url_for('index') }}">
-    <button id = "button"><<</button>
-</form>
-<br>
-<h2 id=myWord>{{ message }}</h2>
+<section class="panel error-panel">
+    <p class="eyebrow">Something went wrong</p>
+    <h2 id="myWord">{{ message }}</h2>
+    <form action="{{ url_for('index') }}">
+        <button id="button">&larr; Back to setup</button>
+    </form>
+</section>
 {% endblock %}

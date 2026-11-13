@@ -1,5 +1,7 @@
-<script src="https://code.jquery.com/jquery-3.5.0.js"></script>
+{% extends "layout.html" %}
 
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.5.0.js"></script>
 <script>
     var fade_out = function() {
         $("#myWord").fadeOut().empty();
@@ -8,33 +10,25 @@
         setTimeout(fade_out, {{ templateFadeout }});
     }
 </script>
-
-{% extends "layout.html" %}
+{% endblock %}
 
 {% block content %}
-
-<h1 id=myWord>{{ word }}</h1>
-
-<br>
-
-<table style="width: 50%; margin-left: auto; margin-right: auto;" cellpadding="6">
-<tbody>
-<tr>
-<td style="text-align: right;">&nbsp;
-    <form action="{{ url_for('same_word', code=templateCode, config=templateConfig, score=templateScore, fadeout=templateFadeout, capitalize=templateCapitalize) }}">
-        <button class = "button-failure">x</button>
-    </form>
-</td>
-<td style="text-align: center;">&nbsp;
-    <h2>{{ templateScore }}</h2>
-</td>
-<td style="text-align: left;">&nbsp;
-    <form action="{{ url_for('next_word', config=templateConfig, score=templateScore, fadeout=templateFadeout, capitalize=templateCapitalize) }}">
-        <button class = "button-success">>></button>
-    </form>
-</td>
-</tr>
-</tbody>
-</table>
-
+<section class="panel word-panel" aria-label="Generated word">
+    <p class="eyebrow">Your next word</p>
+    <div class="word-stage">
+        <h1 id="myWord">{{ word }}</h1>
+    </div>
+    <div class="word-actions">
+        <form action="{{ url_for('same_word', code=templateCode, config=templateConfig, score=templateScore, fadeout=templateFadeout, capitalize=templateCapitalize) }}">
+            <button class="button-failure"><span class="action-symbol" aria-hidden="true">×</span>Try again</button>
+        </form>
+        <div class="score">
+            <span class="score-label">Score</span>
+            <h2>{{ templateScore }}</h2>
+        </div>
+        <form action="{{ url_for('next_word', config=templateConfig, score=templateScore, fadeout=templateFadeout, capitalize=templateCapitalize) }}">
+            <button class="button-success">Next word<span aria-hidden="true"> &rarr;</span></button>
+        </form>
+    </div>
+</section>
 {% endblock %}
