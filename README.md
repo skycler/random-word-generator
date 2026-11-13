@@ -41,7 +41,7 @@ Visibility durations are validated as finite values between 0 and 10 seconds. Se
 
 ## Toolchain and local development
 
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/) **0.13.8 or newer** and Node.js 24 (only needed for JavaScript tests). Upgrade an existing standalone uv installation with `uv self update`. Python 3.14 is selected by the tracked `.python-version`; uv can install it automatically.
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) **0.13.8 or newer** and Node.js 24 (only needed for JavaScript tests). Upgrade an existing standalone uv installation with `uv self update`. Python 3.15 is selected by the tracked `.python-version`; uv can install it automatically.
 
 `pyproject.toml` is the source of truth for package metadata, dependencies, development tools, pytest, coverage, and Ruff. Commit `uv.lock` when dependencies change; local development, CI, and Docker use the same locked versions from PyPI.
 
@@ -88,7 +88,7 @@ uv build
 
 The uv build backend creates a source distribution and wheel in `dist/`, including the package's HTML templates, CSS, and JavaScript. Package metadata starts at version `0.1.0` in `pyproject.toml`.
 
-The multi-stage Dockerfile uses Python 3.14 on Debian Trixie and pinned uv. Production installs only runtime dependencies and the non-editable package, runs as a non-root user, and starts `syllable_shaker:app` with Gunicorn. `PORT` defaults to 8000 and honors Railway's supplied value.
+The multi-stage Dockerfile uses Python 3.15 on Debian Trixie and pinned uv. Production installs only runtime dependencies and the non-editable package, runs as a non-root user, and starts `syllable_shaker:app` with Gunicorn. `PORT` defaults to 8000 and honors Railway's supplied value.
 
 ```sh
 docker compose up --build app                     # http://localhost:8008
@@ -100,7 +100,7 @@ The Docker test target runs Python tests; run JavaScript tests separately with N
 
 ## CI and deployment
 
-`.github/workflows/tests.yml` runs on pushes and pull requests targeting `main`, and can also be run manually. CI uses uv's locked dependencies, Python 3.14, and Node.js 24. It checks Ruff lint/formatting, runs Python tests with coverage and JavaScript timer tests, builds distributions, and builds/smoke-tests the non-root production image and its packaged assets.
+`.github/workflows/tests.yml` runs on pushes and pull requests targeting `main`, and can also be run manually. CI uses uv's locked dependencies, Python 3.15, and Node.js 24. It checks Ruff lint/formatting, runs Python tests with coverage and JavaScript timer tests, builds distributions, and builds/smoke-tests the non-root production image and its packaged assets.
 
 GitHub Actions are pinned to commit SHAs. Dependabot checks uv dependencies, Actions, and Docker images weekly.
 
